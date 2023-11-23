@@ -271,37 +271,33 @@ function prettystraight(arr1) {
 	skip = 0,
 	ordered = [arr2[0]];
     for (var i = 1; i < arr.length; ++i) {
-	const c = arr2[i];
-	if ((colour(c) == runcolour) &&
-	    (rank(c) == (low + i + skip))) {
-	    ordered.push(c);
-	}
-	else if ((jokers[2] > 0) &&
-		 (colour(c) == runcolour) &&
-		 (rank(c) == low + i + 2 + skip)) {
-	    --jokers[2];
-	    skip += 2;
-	    ordered.push(J_DOUBLE);
-	    ordered.push(c);
-	}
-	else if ((jokers[1] > 0) &&
-		 (colour(c) == runcolour) &&
-		 (rank(c) == low + i + 1 + skip)) {
-	    --jokers[1];
-	    skip += 1;
-	    ordered.push(J_SINGLE);
-	    ordered.push(c);
-	}
-	else if ((jokers[4] > 0) &&  // J_CHANGE
-		 (colour(c) != runcolour) &&
-		 (rank(c) == low + i + 1 +skip)) {
-	    --jokers[4];
-	    runcolour = colour(c);
-	    skip += 1;
-	    ordered.push(J_CHANGE);
-	    ordered.push(c);
-	}
-	else return null;
+      const c = arr2[i];
+      if ((colour(c) != runcolour) &&
+	  (rank(c) >= low + i + skip + 1) &&
+	  (jokers[4] > 0)) {
+	runcolour = colour(c);
+	skip += 1;
+	ordered.push(J_CHANGE);
+      }
+      while ((colour(c) == runcolour) &&
+	     (rank(c) >= low + i + 2 + skip) &&
+	     (jokers[2] > 0)) {
+	--jokers[2];
+	skip += 2;
+	ordered.push(J_DOUBLE);
+      }
+      while ((colour(c) == runcolour) &&
+	     (rank(c) >= low + i + 1 + skip) &&
+	     (jokers[1] > 0)) {
+	--jokers[1];
+	skip += 1;
+	ordered.push(J_SINGLE);
+      }
+      if ((colour(c) == runcolour) &&
+	  (rank(c) == (low + i + skip))) {
+	ordered.push(c);
+      }
+      else return null;
     }
     let high = low + arr.length + skip - 1;
     while (jokers[2]) {
@@ -723,5 +719,7 @@ tests = {
     scdet1: function() { return detailed(tocards('R5 T8 JC')).straight == false; },
     smadd1: function() { return check(canadd_t(detailed(tocards('R1')), tocard('JM'))) == ST_INCOMPLETE; },
     smadd2: function() { return check(canadd_t(detailed(tocards('R1 JM')), tocard('R1'))) == ST_GOOD; },
-    jdadd1: function() { return canadd_t(detailed([3, 19, 32]), 35) == false; },
+  jdadd1: function() { return canadd_t(detailed([3, 19, 32]), 35) == false; },
+  solve10: function() { return check(solve([ 13, 13, 45, 61, 61, 48 ]).solution.pop()).length != 6; },
+  jm16: function() { return canadd_t(detailed([13, 13, 45, 48]), 61) == ST_BAD; },
 }
