@@ -39,6 +39,6 @@ use features he already knew).
 
 ## Links
 
-[https://rummikub.com/product/rummikub-with-a-twist/](Official game site)
+[Official game site](https://rummikub.com/product/rummikub-with-a-twist/)
 
-[https://www.pocruises.com/cruise-ships/ventura/overview](Ventura)
+[Ventura](https://www.pocruises.com/cruise-ships/ventura/overview)
