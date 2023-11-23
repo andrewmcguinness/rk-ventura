@@ -242,11 +242,15 @@ function detailed(arr1) {
 }
 
 function prettytile(c, doc) {
-    const el = doc.createElement('span');
-    el.classList.add('tilecolour-' + Colours[colour(c)]);
-    if (isjoker(c)) el.classList.add('joker');
-    el.textContent = cardstr(c);
-    return el;
+  const el = doc.createElement('span');
+  let t = colour(c);
+  if (isjoker(c)) {
+    el.classList.add('joker');
+    --t;
+  }
+  el.classList.add('tilecolour-' + Colours[t]);
+  el.textContent = cardstr(c);
+  return el;
 }
     
 function prettystraight(arr1) {
@@ -439,7 +443,14 @@ function solveN(working, cursor, pool, state) {
     }
     let details = detailed(working);
     for (let i = cursor; i < pool.length; ++i) {
-	++(state.count);
+      ++(state.vars.count);
+      if (!(state.vars.count & 0xffffff)) {
+	if (state.cb) {
+	  state.vars.working = working.length;
+	  state.vars.pool = pool.length;
+	  state.cb(state.vars);
+	}
+      }
       while((i > 0) && (pool[i] == pool[i-1])) ++i; // skip duplicates if failed already
       if (i >= pool.length) break;
 
@@ -455,7 +466,7 @@ function solveN(working, cursor, pool, state) {
 	pool2.splice(i, 1);
 
 	if (st == ST_GOOD) {
-	  ++(state.begins);
+	  ++(state.vars.begins);
 	  let attempt = solveN([], 0, pool2, state);
 	  if (attempt) {
 	    working.push(next);
@@ -474,15 +485,22 @@ function solveN(working, cursor, pool, state) {
     }
 }
 
-function solve(tiles) {
+function solve(tiles, cb) {
     const order = c => (rank(c) << 3) + colour(c) + (isjoker(c) << 10);
     
-  let state = { count: 0, begins: 0 },
+  let state = { cb: cb, vars:
+		{ count: 0, begins: 0,
+		  completed: false, succeeded: false,
+		  start_time: new Date().getTime() } },
       sorted = tiles.slice(0);
   sorted.sort((x,y)=>(order(x)-order(y)));
-  state.solution = solveN([], 0, sorted, state);
+  state.vars.solution = solveN([], 0, sorted, state);
+  state.vars.completed = true;
+  state.vars.succeeded = !!(state.vars.solution);
+  state.vars.end_time = new Date().getTime();
+  state.vars.elapsed = state.vars.end_time - state.vars.start_time;
 
-    return state;
+  return state.vars;
 }
 
 function sol_len(solve_output) {
@@ -506,17 +524,17 @@ function bag() {
     return out;
 }
 
-function random_solve(n) {
+function random_solve(n, cb) {
     const a = bag().slice(0,n),
-	  out = solve(a);
+	  out = solve(a, cb);
     out.src = a;
     return out;
 }
 
-function test_vector(cases, bag_size) {
-    out = [];
-    for (let i = 0; i < cases; ++i) out.push(random_solve(bag_size));
-    return out;
+function test_vector(cases, bag_size, cb) {
+  out = [];
+  for (let i = 0; i < cases; ++i) out.push(random_solve(bag_size, cb));
+  return out;
 }
 
 tests = {

@@ -1,12 +1,12 @@
 <html>
   <head>
-    <title>Rummi tests</title>
+    <title>Rummi random runs</title>
     <style type='text/css'>
       span.tilecolour-R { background: red; color: white }
       span.tilecolour-T { background: aqua; color: black }
-      span.tilecolour-Y { background: orange; color: black }
+      span.tilecolour-Y { background: yellow; color: black }
       span.tilecolour-B { background: black; color: white }
-      #solution li {
+      li {
 	  margin: 1ex;
 	  border: 1px solid black;
 	  padding: 2ex 2ex 2ex 1ex;
@@ -15,11 +15,15 @@
 	  background: #e0e0e0;
 	  display: inline-block;
       }
-      li > span { margin-left: 1ex; padding: 4px }
-      li > span.joker { font-weight: bold }
+      .cards {
+	  padding: 2ex 2ex 2ex 1ex;
+	  line-height: 2em;
+      }
+      span.tile { margin-left: 1ex; padding: 4px }
+      span.joker { font-weight: bold }
       #tosolve span { margin-left: 1ex; padding: 4px }
       #tosolve span.joker { font-weight: bold }
-      #tosolve { margin: 1ex; line-height: 2em; }
+      #tosolve { margin: 1ex; }
     </style>
     <script src='./rummi.js'></script>
     <script src='./fullcases.js'></script>
@@ -27,7 +31,7 @@
 
       
       function clear() {
-	  for (let l of ['errors', 'output']) {
+	  for (let l of ['hands']) {
 	      const e = document.getElementById(l);
 	      while (e.firstChild) e.removeChild(e.firstChild);
 	  }
@@ -52,8 +56,10 @@
       }
       function itemof(arr) {
 	  const li = document.createElement('li');
-	  prettymeld(arr).map(c => prettytile(c, document)).forEach(el => li.appendChild(el));
-	  return li;
+	prettymeld(arr).map(c => prettytile(c, document)).forEach(el => {
+	  el.classList.add('tile');li.appendChild(el);
+	});
+	return li;
       }
 
       function dosolve() {
@@ -62,10 +68,7 @@
 	    display = document.getElementById('solution');
 	arr.sort((x, y) => (x - y));
 	while (li.firstChild) li.removeChild(li.firstChild);
-	arr.map(c => prettytile(c, document)).forEach(el => {
-	  li.appendChild(el);
-	  li.append(document.createTextNode(' '));
-	});
+	arr.map(c => prettytile(c, document)).forEach(el => li.appendChild(el));
 	while (display.firstChild) display.removeChild(display.firstChild);
 	document.getElementById('solvestatus').textContent = 'Working...';
 	workersolve(arr);
@@ -108,7 +111,7 @@
 	    solve_complete(tiles, starttm, msg.data);
 	  else {
 	    const seconds = (new Date().getTime() - msg.data.start_time)/1000;
-	    document.getElementById('solvestatus').textContent = 'Working ' + Math.floor(seconds) + 's';
+	    document.getElementById('solvestatus').textContent = 'working ' + Math.floor(seconds) + 's';
 	  }
 	}
 	solve_worker.postMessage(tiles);
@@ -123,6 +126,64 @@
 	}
 	solve_worker.postMessage({test_vector: {cases: cases, bag_size: bag_size}});
       }
+
+      function generate() {
+	clear();
+	input = [];
+	const count = document.getElementById('count').value - 0,
+	      size = document.getElementById('size').value - 0;
+	get_worker();
+	for (let i = 0; i < count; ++i) {
+	  console.log(i);
+	  const tiles = bag().slice(0, size),
+		disp = document.getElementById('template').firstElementChild.cloneNode(true),
+		cards = disp.querySelector('.cards');
+	  input.push({in: tiles, el: disp, num: input.length});
+
+	  tiles.map(c => prettytile(c, document)).forEach(el => {
+	    el.classList.add('tile');
+	    cards.appendChild(el) ;
+	    cards.append(document.createTextNode(' '));
+	  });
+
+	  document.getElementById('hands').appendChild(disp);
+	}	  
+	solve_worker.onmessage = handleSolve;
+	requestSolve(0);
+      }
+
+      function requestSolve(i) {
+	console.log('request', i, input[i]);
+	solve_worker.postMessage(input[i].in);
+      }
+      
+      function handleSolve(msg) {
+	const d = msg.data;
+	let index = 0;
+	console.log('handler', d);
+	for (let i = 0; i < input.length; ++i)
+	  if (input[i]) {
+	    index = i;
+	    break;
+	  }
+	const detail = input[index];
+	if (d.completed) {
+	  if (d.solution) {
+	    for (let meld of d.solution) {
+	      const li = itemof(meld);
+	      detail.el.querySelector('.solution').appendChild(li);
+	    }
+	  }
+	  detail.el.querySelector('.result').textContent = ((d.succeeded)?'Solved':'Unsolved') +
+	    ' in ' + d.elapsed + 'ms';
+	  input[index] = null;
+	  if (++index < input.length)
+	    requestSolve(index);
+	} else {
+	  detail.el.querySelector('.result').textContent = 'Thinking (' + Math.floor((new Date().getTime() - d.start_time)/1000) + 's)';
+	}
+      }
+	  
     </script>
   </head>
   <body>
@@ -131,15 +192,21 @@
       <p>Ranks: 1 - 13</p>
       <p>Jokers: JS JD JM JC</p>
     </div>
-    <input id='hand' width='80'></input>
-    <button onclick='dosolve()'>Solve</button>
-    <div id='tosolve'></div>
-    <p id='solvestatus'></p>
-    <ul id='solution'></ul>
-    <hr/>
-    <input id='onetest'></input> <button onclick='go()'>test</button>
-    <ol id='errors'></ol>
-    <ol id='output'></ol>
+    <form>
+      <input id='count'></input>
+      <input id='size'></input>
+      <button type='button' onclick='generate()'>Go</button>
+    </form>
+    <div id='hands'>
+    </div>
+    <div id='template'>
+      <div class='each'>
+	<p class='cards'></p>
+	<p class='result'></p>
+	<ul class='solution'></ul>
+      </div>
+    </div>
+    <p id='status'></p>
   </body>
 </html>
 
