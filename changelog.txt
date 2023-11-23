@@ -31,3 +31,5 @@ version 15 -- Use Details type instead of working array
 version 16 -- Delete obsolete code (jokers array and raw array)
 
 version 17 -- reorder functions and remove or share copied rendering code
+
+version 18 -- move tests into own file
