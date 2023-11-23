@@ -21,6 +21,14 @@
       #tosolve span.joker { font-weight: bold }
       #tosolve { margin: 1ex; line-height: 2em; }
       #solvebutton { height: 2em; width: 8em; }
+      #table2 {
+	  display: flex;
+	  flex-direction: row;
+      }
+      .column {
+	  display: flex;
+	  flex-direction: column;
+      }
     </style>
     <script src='./rummi.js'></script>
     <script>
@@ -69,9 +77,26 @@
 	  li.append(document.createTextNode(' '));
 	});
 	while (display.firstChild) display.removeChild(display.firstChild);
-	document.getElementById('solvestatus').textContent = 'Working...';
-	console.log(arr);
-	workersolve(arr);
+
+	let valid = validate(arr);
+	if (valid.ok) {
+	  document.getElementById('solvestatus').textContent = 'Working...';
+	  console.log(arr);
+	  workersolve(arr);
+	} else {
+	  console.log(valid);
+	  document.getElementById('solvestatus').textContent = valid.err + ' ' + cardstr(valid.val);
+	}
+      }
+
+      function validate(arr) {
+	for (let i = 0; i < arr.length; ++i) {
+	  if (!arr[i]) return { ok: false, err: 'invalid tile' };
+	  if ((i > 1) && (arr[i] == arr[i-1]) && (arr[i] == arr[i-2])) {
+	    return { ok: false, err: 'too many tiles', val: arr[i] };
+	  }
+	}
+	return { ok: true };
       }
       
       function get_worker() {
@@ -96,13 +121,80 @@
 	console.log('waiting for solve');
       }
 
+      function addcolumn(ev) {
+	const col = ev.target.parentElement.parentElement,
+	      next = col.parentElement.insertBefore(document.createElement('div'), null);
+	next.classList.add('column');
+	next.appendChild(ev.target.parentElement.cloneNode(true));
+	for (let g of col.querySelectorAll('.group')) {
+	  let ng = g.cloneNode(true);
+	  activate_group(ng);
+	  next.appendChild(ng);
+	}
+      }
+
+      function delcolumn(ev) {}
+      function edit(ev) {
+	let next = ev.target.parentElement.nextElementSibling;
+	console.log('edit', ev);
+	if (!next) {
+	  next = ev.target.parentElement.cloneNode(true);
+	  next.querySelector('input').value = '';
+	  activate_group(next);
+	  ev.target.parentElement.parentElement.appendChild(next);
+	}
+      }
+
+      function drag_group(ev) {
+	console.log(ev);
+      }
+      function drop_group(ev) {
+	console.log(ev);
+      }
+      function delete_group(ev) {
+	const g = ev.target.parentElement;
+	g.parentElement.removeChild(g);
+      }
+      function activate_column(div) {
+	div.querySelectorAll('.buttons button').forEach(b => {
+	  if (b.classList.contains('add'))
+	    b.addEventListener('click', addcolumn);
+	  if (b.classList.contains('del'))
+	    b.addEventListener('click', delcolumn);
+	});
+      }
+      function activate_group(div) {
+	div.querySelector('.handle').addEventListener('dragend', drag_group);
+	div.querySelector('input').addEventListener('input', edit);
+	div.querySelector('.delgroup').addEventListener('click', delete_group);
+	div.querySelector('.handle').addEventListener('drop', drop_group);
+      }
+      function start() {
+	console.log('start');
+	document.querySelectorAll('.column').forEach(activate_column);
+	document.querySelectorAll('.group').forEach(g => {
+	  activate_group(g);
+	});
+      }
+      window.onload = start;
     </script>
   </head>
   <body>
     <div>
-      <p>Colours: R T Y B</p>
-      <p>Ranks: 1 - 13</p>
-      <p>Jokers: JS JD JM JC</p>
+      <p>Colours: R T Y B / Ranks: 1 - 13 / Jokers: JS JD JM JC</p>
+    </div>
+    <div id='table2' class='holder'>
+      <div class='column'>
+	<div class='buttons'>
+	  <button type='button' class='add'>add</button>
+	  <button type='button' class='del'>del</button>
+	</div>
+	<div class='group'>
+	  <span class='handle' draggable='true'>O</span>
+	  <input></input>
+	  <button type='button' class='delgroup'>x</button>
+	</div>
+      </div>
     </div>
     <div id='table'>
       <h3>Table</h3>
