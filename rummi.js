@@ -59,27 +59,12 @@ function tocard(s) {
 }
 
 function tocards(s) {
-    return s.split(" ").map(tocard);
+  return s.split(/ +/).map(tocard).filter(x=>x);
 }
 
 ST_BAD = 0;
 ST_INCOMPLETE = 1;
 ST_GOOD = 2;
-
-// constraint: never begin a straight with a joker
-// compatibility shim for old test cases
-function isaset(arr) {
-    let det = make_details(arr);
-    if (det.set) return [det.lowrank];
-    else return [0];
-}
-
-// compatibility shim for old test cases
-function isastraight(arr1) {
-    let det = make_details(arr1);
-    if (det.straight) return [det.lowrank, det.lowcolour];
-    else return [0];
-}
 
 function Details(arr1, next) {
   if (arr1.tiles) { // copy
@@ -110,55 +95,6 @@ function Details(arr1, next) {
 Details.prototype.physical = function() {
   if (this.mirrored) return this.tiles.length + this.mirror_tiles.length + 1;
   else return this.tiles.length;
-}
-
-function prettytile(c, doc) {
-  const el = doc.createElement('span');
-  let t = colour(c);
-  if (isjoker(c)) {
-    el.classList.add('joker');
-    --t;
-  }
-  el.classList.add('tilecolour-' + Colours[t]);
-  el.textContent = cardstr(c);
-  return el;
-}
-    
-		   
-function prettymeld(arr) {
-  let det = arr;
-  if (!det.tiles) det = new Details(arr);
-
-  if (det.mirrored) {
-    return det.tiles.concat([J_MIRROR]).concat(det.mirror_tiles.slice(0).reverse());
-    let ret = det.tiles;
-    arr.sort(tilesort);
-    let tail = [], head = [], numtiles = 0;
-    for (let i = 0; i < (arr.length - 1); ++i) {
-      head.push(arr[i]);
-      ++numtiles;
-      if (arr[i+1] == arr[i]) {
-	tail.unshift(arr[++i]);
-	++numtiles;
-      } else {
-	tail.unshift(-1);
-      }
-      if ((head.length * 2) + 1 == arr.length) break;
-    }
-    for (let i = arr.length - 1; i >= numtiles; --i) {
-      if (arr[i] == J_MIRROR) head.push(arr[i]);
-      else if (arr[i] == J_SINGLE) {
-	for (let j = 0 ; j < tail.length; ++j)
-	  if (tail[j] < 0) {
-	    tail[j] = arr[i];
-	    break;
-	  }
-      }
-    }
-    return head.concat(tail);
-  } else {
-    return det.tiles;
-  }
 }
 
 
@@ -284,9 +220,13 @@ Details.prototype.canadd = function(c) {
       ((c == J_SINGLE)||(c == J_DOUBLE))) {
     let ret = new Details(this, c),
 	j = (c == J_DOUBLE)?2:1;
-    if (this.highrank < 12) ret.highrank += j;
-    else ret.lowrank -= j;
-    ret.tiles.push(c);
+    if (this.highrank < 12) {
+      ret.highrank += j;
+      ret.tiles.push(c);
+    } else {
+      ret.lowrank -= j;
+      ret.tiles.unshift(c);
+    }
     ret.straight += j;
     ret.complete = (sz >= 2);
     return ret;
@@ -325,47 +265,6 @@ Details.prototype.canadd = function(c) {
   }
 
   return ST_BAD;
-}
-
-function canadd(arr, c) {
-  const d = make_details(arr).canadd(c);
-  if (d) return d.complete?ST_GOOD:ST_INCOMPLETE;
-  else return ST_BAD;
-}
-
-
-
-//  TESTS
-
-
-var G;
-function check(val) {
-    G.lastval = JSON.stringify(val);
-    return val;
-}
-
-function runonetest(t) {
-    G={};
-    const result = (tests[t]())?'SUCCESS':'FAILURE';
-    console.log(result);
-}
-
-function runtests() {
-    G={};
-    let out = { failed: [], all: [] };
-    for (t in tests) {
-	G.lastval = 'NOTUSED';
-	if (!(tests[t]())) {
-	    out.failed.push("FAILED:" + t + "\nwas " + G.lastval);
-	    out.all.push("FAILED:" + t + "\nwas " + G.lastval);
-	    console.log("FAILED:" + t + "\nwas " + G.lastval);
-	} else {
-	    out.all.push("SUCCESS: " + t);
-	    console.log("SUCCESS: " + t);
-	}
-    }
-    console.log("" + out.failed.length + " of " + Object.keys(tests).length + " failed.");
-    return out;
 }
 
 // return a pool with element i removed
@@ -448,6 +347,61 @@ function sol_len(solve_output) {
     return 0;
 }
 
+
+// Rendering code
+
+function prettytile(c, doc) {
+  const el = doc.createElement('span');
+  let t = colour(c);
+  if (isjoker(c)) {
+    el.classList.add('joker');
+    --t;
+  }
+  el.classList.add('tilecolour-' + Colours[t]);
+  el.textContent = cardstr(c);
+  return el;
+}
+    
+function prettymeld(arr) {
+  let det = arr;
+  if (!det.tiles) det = new Details(arr);
+
+  if (det.mirrored) {
+    return det.tiles.concat([J_MIRROR]).concat(det.mirror_tiles.slice(0).reverse());
+  } else {
+    return det.tiles;
+  }
+}
+
+function itemof(arr) {
+  const li = document.createElement('li');
+  prettymeld(arr).map(c => prettytile(c, document)).forEach(el => {
+    el.classList.add('tile');
+    li.appendChild(el);
+    li.append(document.createTextNode(' '));
+  });
+  return li;
+}
+
+// write a solution into a div with id 'solution'
+function solve_complete(tiles, start_time, soln) {
+  let display = document.getElementById('solution');
+  console.log(soln);
+  if (soln.solution) {
+    for (let meld of soln.solution) {
+      const li = itemof(meld);
+      display.appendChild(li);
+    }
+  }
+  document.getElementById('solvestatus').textContent =
+    'Considered ' + soln.begins + '/' + soln.count + ' nodes in ' + soln.elapsed + 'ms - ' +
+    (soln.succeeded?'Solved':'Not Solved');
+  return soln;
+}
+	  
+
+// random hands
+
 function bag() {
     let out = [];
     for (let i = 1 ; i <= 64; ++i) {
@@ -477,6 +431,9 @@ function test_vector(cases, bag_size, cb) {
   return out;
 }
 
+//  TESTS
+
+// helpers for old tests
 function make_details(arr) {
   if (!arr.length) return ST_BAD;
   let det = new Details(arr.slice(0,1));
@@ -486,6 +443,56 @@ function make_details(arr) {
   }
   return det;
 }
+
+function canadd(arr, c) {
+  const d = make_details(arr).canadd(c);
+  if (d) return d.complete?ST_GOOD:ST_INCOMPLETE;
+  else return ST_BAD;
+}
+
+function isaset(arr) {
+    let det = make_details(arr);
+    if (det.set) return [det.lowrank];
+    else return [0];
+}
+
+function isastraight(arr1) {
+    let det = make_details(arr1);
+    if (det.straight) return [det.lowrank, det.lowcolour];
+    else return [0];
+}
+
+
+var G;
+function check(val) {
+    G.lastval = JSON.stringify(val);
+    return val;
+}
+
+function runonetest(t) {
+    G={};
+    const result = (tests[t]())?'SUCCESS':'FAILURE';
+    console.log(result);
+}
+
+function runtests() {
+    G={};
+    let out = { failed: [], all: [] };
+    for (t in tests) {
+	G.lastval = 'NOTUSED';
+	if (!(tests[t]())) {
+	    out.failed.push("FAILED:" + t + "\nwas " + G.lastval);
+	    out.all.push("FAILED:" + t + "\nwas " + G.lastval);
+	    console.log("FAILED:" + t + "\nwas " + G.lastval);
+	} else {
+	    out.all.push("SUCCESS: " + t);
+	    console.log("SUCCESS: " + t);
+	}
+    }
+    console.log("" + out.failed.length + " of " + Object.keys(tests).length + " failed.");
+    return out;
+}
+
 
 tests = {
     cardstr1: function() { return cardstr(20) == 'T4'; },
@@ -552,7 +559,6 @@ tests = {
     addrj3: function() { return canadd(check(tocards('Y8 Y9 JD')), tocard('Y11')) == ST_BAD; },
     addrj6: function() { return canadd(tocards('Y7 Y8 JD'), tocard('Y5')) == ST_BAD; },
     addrj8: function() { return check(canadd(tocards('Y6 JS Y8'), tocard('Y9'))) == ST_GOOD; },
-//    pretty1: function() { return JSON.stringify(prettymeld([3, 4, 5, 8, 32])) == '[3,4,5,32,8]'; },
     pretty2: function() { return isaset([3,4,5,8,32]) == 0; },
     jc1: function() { return check(isastraight(tocards('T5 T6 JS B9')))[0] == 0; },
     jc2: function() { return check(isastraight(tocards('B5 B6 JC T8')))[0] == 5; },

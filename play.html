@@ -15,7 +15,7 @@
 	  background: #e0e0e0;
 	  display: inline-block;
       }
-      li > span { margin-left: 1ex; padding: 4px }
+      li > span { margin-left: 1ex; padding: 4px; width: 4ex; display: inline-block; text-align: center }
       li > span.joker { font-weight: bold }
       #tosolve span { margin-left: 1ex; padding: 4px }
       #tosolve span.joker { font-weight: bold }
@@ -23,7 +23,6 @@
       #solvebutton { height: 2em; width: 8em; }
     </style>
     <script src='./rummi.js'></script>
-    <script src='./fullcases.js'></script>
     <script>
       function parse_tiles(str) {
 	const pieces = str.toUpperCase().split(/[ ,]+/),
@@ -58,16 +57,7 @@
 	  box.value = contents.map(cardsstr).join('\n');
 	  groups.push(contents);
 	}
-	/*
-	  for (let group of box.value.split('\n'))
-	    for (let t of parse_tiles(group))
-	      arr.push(t);
-	for (let box of hdiv.querySelectorAll('textarea'))
-	  for (let group of box.value.split('\n'))
-	    for (let t of parse_tiles(group))
-	      arr.push(t);
-	arr.sort(tilesort);
-	*/
+
 	const li = document.querySelector('#tosolve'),
 	      display = document.getElementById('solution'),
 	      arr = groups.flat().flat();
@@ -84,58 +74,6 @@
 	workersolve(arr);
       }
       
-      function clear() {
-	  for (let l of ['errors', 'output']) {
-	      const e = document.getElementById(l);
-	      while (e.firstChild) e.removeChild(e.firstChild);
-	  }
-      }
-      function err(x) {
-	  const li = document.createElement('li');
-	  li.textContent = x;
-	  document.getElementById('errors').appendChild(li);
-      }
-      function out(x) {
-	  const li = document.createElement('li');
-	  li.textContent = x;
-	  document.getElementById('output').appendChild(li);
-      }
-      function go() {
-	  const selected = document.getElementById('onetest').value;
-	  if (selected) return runonetest(selected);
-	  const results = runtests();
-	  console.log(results);
-	  for (let e of results.failed) err(e);
-	  for (let o of results.all) out(o);
-      }
-      function itemof(arr) {
-	  const li = document.createElement('li');
-	  prettymeld(arr).map(c => prettytile(c, document)).forEach(el => li.appendChild(el));
-	  return li;
-      }
-
-      function solve_complete(tiles, start_time, soln) {
-	let display = document.getElementById('solution');
-	console.log(soln);
-	if (soln.solution) {
-	  for (let meld of soln.solution) {
-	    const li = itemof(meld);
-	    display.appendChild(li);
-	  }
-	}
-	document.getElementById('solvestatus').textContent =
-	  'Considered ' + soln.begins + '/' + soln.count + ' nodes in ' + soln.elapsed + 'ms - ' +
-	  (soln.succeeded?'Solved':'Not Solved');
-	return soln;
-      }
-	  
-      function showsolve(tiles) {
-	let starttm = new Date().getTime(),
-	    soln = solve(tiles);
-
-	return solve_complete(tiles, starttm, soln);
-      }
-
       function get_worker() {
 	if (!window.solve_worker) solve_worker = new Worker('./worker.js');
 	return solve_worker;
@@ -158,14 +96,6 @@
 	console.log('waiting for solve');
       }
 
-      function random_hands(cases, bag_size) {
-	get_worker();
-	solve_worker.onmessage = (msg) => {
-	  console.log(msg.data);
-	  lastmsg = msg.data;
-	}
-	solve_worker.postMessage({test_vector: {cases: cases, bag_size: bag_size}});
-      }
     </script>
   </head>
   <body>
