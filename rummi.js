@@ -76,128 +76,16 @@ function separate(arr) {
 // constraint: never begin a straight with a joker
 // returns [is, extra-info]
 function isaset(arr) {
-    if (!arr.length) return [0, -1]; // error
-
-    if (arr.includes(J_MIRROR)) {
-	if (arr.length < 3) return [0, -2]; // mirror requires 3
-	let jokers = separate(arr.slice(0)),
-	    arr2 = jokers[0],
-	    setrank = rank(arr2[0]), // todo JS JM R1
-	    colours = 0;
-	for (let i = 1; i < arr2.length; i += 2) {
-	    if ((arr2[i] != arr2[i-1]) || (rank(arr2[i]) != setrank))
-		return [0];
-	    colours |= (1 << colour(arr2[i]));
-	}
-	return [setrank, colours, 0];
-    }
-
-    let colours = 1 << colour(arr[0]),
-	setrank = rank(arr[0]),
-	skip = 0;
-    for (var i = 1; i < arr.length; ++i) {
-	const c = arr[i];
-	if (c == J_DOUBLE)
-	    ++skip;
-	if ((c != J_SINGLE) && (c != J_DOUBLE)) {
-	    if (rank(c) != setrank) return [0];
-	    const cbit = 1 << colour(c);
-	    if (colours & cbit) return [0]; // dupe colour
-	    colours |= cbit;
-	}
-    }
-    if (arr.length + skip > 4) return [0]; // more than 4 colours
-    return [setrank, colours, skip];
+    let det = detailed(arr);
+    if (det.set) return [det.lowrank];
+    else return [0];
 }
 
 // returns start-of-straight, colour, skip-count
 function isastraight(arr1) {
-    if (!arr1.length) return [0, -2]; // error
-
-    let jokers = separate(arr1.slice(0)),
-	arr = jokers[0];
-    jokers[0] = null; // tidy up
-
-    if (jokers[3] == 1) { // J_MIRROR
-	jokers[3] = 0;
-	if (arr1.length < 3) return [0, -3];
-	let half = [], runcolour = colour(arr[0]),
-	    low = rank(arr[0]), skip = 0;;
-	for (let i = 0; i < arr.length; ++i) {
-	    let c = arr[i],
-		pair = i + 1;
-	    if ((pair < arr.length) && (arr[pair] == c)) {
-		half.push(c);
-		i = pair;
-	    }
-	    else if (jokers[1]) { // pair of the run tile is a JS
-		half.push(c);
-		--jokers[1];
-	    }
-	    if (colour(c) != runcolour) return [0, -5];
-	    if ((i > 0) && (rank(c) != (low + (half.length) - 1))) {
-		// TODO JS,JD
-		return [0, -4];
-	    }
-	}
-	return [low, runcolour, skip];
-    }
-    if (!arr[0]) return [0]; // hand with only jokers
-    let low = rank(arr[0]),
-	runcolour = colour(arr[0]),
-	skip = 0;
-    for (var i = 1; i < arr.length; ++i) {
-	const c = arr[i];
-	if ((colour(c) == runcolour) &&
-	    (rank(c) == (low + i + skip)))
-	    continue;
-	else if ((jokers[1] > 0) &&
-		 (colour(c) == runcolour) &&
-		 (rank(c) == low + i + 1 + skip)) {
-	    --jokers[1];
-	    skip += 1;
-	    continue;
-	}
-	else if ((jokers[2] > 0) &&
-		 (colour(c) == runcolour) &&
-		 (rank(c) == low + i + 2 + skip)) {
-	    --jokers[2];
-	    skip += 2;
-	    continue;
-	}
-	else if ((jokers[4] > 0) &&  // J_CHANGE
-		 (colour(c) != runcolour) &&
-		 (rank(c) == low + i + 1 + skip)) {
-	    --jokers[4];
-	    console.log([low, skip, c, runcolour]);
-	    runcolour = colour(c);
-	    skip += 1;
-	    continue;
-	}
-	else return [0, c, jokers];
-    }
-    let high = low + arr.length + skip - 1;
-    while (jokers[2]) {
-	if (high < 12) high += 2;
-	else low -= 2;
-	--jokers[2];
-	skip += 2;
-    }
-    while (jokers[1]) {
-	if (high < 13) ++high;
-	else --low;
-	--jokers[1];
-	skip += 1;
-    }
-    while (jokers[4]) {
-	if (high < 13) ++high;
-	else --low;
-	--jokers[4];
-	skip += 1;
-    }
-    if ((low < 1) || (high > 13)) return [0];
-    
-    return [low, runcolour, skip];
+    let det = detailed(arr1);
+    if (det.straight) return [det.lowrank, det.lowcolour];
+    else return [0];
 }
 
 // d is a detail object
@@ -303,6 +191,10 @@ function setdetails(d) {
 	    if ((d.tiles[i] != d.tiles[i-1]) || (rank(d.tiles[i]) != d.lowrank))
 		return;
 	    d.colours |= (1 << colour(d.tiles[i]));
+	}
+	if (d.tiles.length%2) {
+	    let odd = d.tiles[d.tiles.length - 1];
+	    if (rank(odd) != d.lowrank) return;
 	}
 	d.set = true;
 	return;
@@ -428,45 +320,13 @@ function prettystraight(arr1) {
 		    
 		   
 function prettymeld(arr) {
-    let out = arr.slice(0);
-    if (isaset(arr)[0]) {
+    console.log(arr);
+    let det = detailed(arr);
+    if (det.set) {
 	arr.sort();
 	return arr;
     }
-    else return prettystraight(arr);
-}
-
-function isvalid(arr) {
-    return isaset(arr) || isastraight(arr);
-}
-
-function canadd_asset(arr, c) {
-    if (arr.length >= 4) return ST_BAD; // only 4 colours!
-    let setval = isaset(arr);
-    if (setval[0] &&
-	(arr.length + setval[2] < 4) &&
-	((c == J_SINGLE) ||
-	 ((c == J_DOUBLE) && (arr.length + setval[2] < 3)) ||
-	 ((setval[0] == rank(c)) && !(setval[1] & (1<<colour(c)))))
-       )
-	return (arr.length >= 2)?ST_GOOD:ST_INCOMPLETE;
-    if (arr.includes(J_MIRROR)) {
-	if (setval[0]) {
-	    if ((setval[0] == rank(c)) && !(setval[1] && (1<<colour(c))))
-		return ST_INCOMPLETE; // extending mirrored set that will need balancing
-	    // TODO JM JS JS ???
-	}
-	else {
-	    let arr2 = arr.slice(0);
-	    arr2.push(c);
-	    if (isaset(arr2)[0]) return ST_GOOD;
-	}
-	return ST_BAD;
-    }
-
-    
-    if ((arr.length == 1) && (c == J_MIRROR)) return ST_INCOMPLETE;
-    return ST_BAD;
+    else return prettystraight(arr) || arr.sort();
 }
 
 function canadd_t(dets, c) {
@@ -498,7 +358,9 @@ function canadd_t(dets, c) {
 	return ST_BAD;
     }
 
-    if (dets.set && (rank(c) == dets.lowrank) && !(dets.colours & (1 << colour(c))))
+    if (dets.set && (rank(c) == dets.lowrank) &&
+	((dets.tiles.length + dets.jokers[1] + 2 * dets.jokers[2]) < 4) &&
+	!(dets.colours & (1 << colour(c))))
 	return (sz >= 2)?ST_GOOD:ST_INCOMPLETE;
     if (dets.set && ((dets.tiles.length + dets.jokers[1] + 2 * dets.jokers[2]) < 4) &&
 	c == J_SINGLE)
@@ -522,45 +384,7 @@ function canadd_t(dets, c) {
     return ST_BAD;
 }
 
-function canadd_asstr(arr, c) {
-    if (c == J_MIRROR) {
-	if (arr.length != 1) return ST_BAD;
-	return ST_INCOMPLETE;
-    }
-    const strdata = isastraight(arr);
-    if (arr.includes(J_MIRROR)) {
-	if (arr.length % 2) { // was odd length, now even
-	    if (!strdata[0]) return ST_BAD; // wasn't a straight
-	    if (colour(c) != strdata[1]) return ST_BAD;
-	    let halflen = (arr.length - 1) / 2;
-	    if (rank(c) != strdata[0] + halflen) return ST_BAD;
-	    return ST_INCOMPLETE;
-	}
-	else { // was even length, now odd length
-	    const added = arr.slice(0);
-	    added.push(c);
-	    const sd2 = isastraight(added);
-	    if (sd2[0]) return ST_GOOD;
-	    else return ST_BAD;
-	}
-    }
-    if (!strdata[0]) return ST_BAD;
-
-    const added = arr.slice(0);
-    added.push(c);
-    const sd2 = isastraight(added);
-    
-    if (!sd2[0]) return ST_BAD;
-    if (added.length <= 2) return ST_INCOMPLETE;
-    if ((added[0] == J_CHANGE) || (added[0] == J_MIRROR) ||
-	(added[added.length - 1] == J_CHANGE) ||
-	(added[added.length - 1] == J_MIRROR))
-	return ST_INCOMPLETE;
-    return ST_GOOD;
-}
-
 function canadd(arr, c) {
-    //return Math.max(canadd_asset(arr, c), canadd_asstr(arr, c));
     return canadd_t(detailed(arr), c);
 }
 
@@ -599,75 +423,38 @@ function runtests() {
     return out;
 }
 
-function solve1(tiles) {
-    if (isaset(tiles) || isastraight(tiles))
-	return [tiles.slice(0)];
-    else return false;
-}
-
-function solveNold(working, pool, state) {
-    if (pool.length == 0) {
-	if (working.length == 0) return [];
-	else return null;
-    }
-    for (let i = 0; i < pool.length; ++i) {
-	let st = ST_INCOMPLETE;
-	++(state.count);
-	if (working.length) {
-	    st = canadd(working, pool[i]);
-	}
-	if (st) {
-	    let pool2 = pool.slice(0), // TODO keep one pool2 and switch it around
-		last = pool2.pop();
-	    if (i < pool2.length)
-		pool2[i] = last;
-	    if (st == ST_GOOD) {
-		let attempt = solveN([], pool2, state);
-		if (attempt) {
-		    working.push(pool[i]);
-		    attempt.push(working);
-		    return attempt;
-		}
-	    }
-	    
-	    let working2 = working.slice(0);
-	    working2.push(pool[i]);
-	    let attempt = solveN(working2, pool2, state);
-	    if (attempt) {
-		return attempt;
-	    }
-	}
-    }
-}
-
 function solveN(working, pool, state) {
     if (pool.length == 0) {
 	if (working.length == 0) return [];
 	else return null;
     }
+    if (working.length == 0) {
+	let pool2 = pool.slice(1);
+	return solveN([pool[0]], pool2, state);
+    }
     let details = detailed(working);
     for (let i = 0; i < pool.length; ++i) {
-	let st = ST_INCOMPLETE;
 	++(state.count);
+	let st = ST_INCOMPLETE;
 	if (working.length) {
 	    st = canadd_t(details, pool[i]);
 	}
 	if (st) {
 	    let pool2 = pool.slice(0), // TODO keep one pool2 and switch it around
-		last = pool2.pop();
-	    if (i < pool2.length)
-		pool2[i] = last;
+		next = pool2.splice(i, 1)[0];
+
 	    if (st == ST_GOOD) {
+		++(state.begins);
 		let attempt = solveN([], pool2, state);
 		if (attempt) {
-		    working.push(pool[i]);
+		    working.push(next);
 		    attempt.push(working);
 		    return attempt;
 		}
 	    }
 	    
 	    let working2 = working.slice(0);
-	    working2.push(pool[i]);
+	    working2.push(next);
 	    let attempt = solveN(working2, pool2, state);
 	    if (attempt) {
 		return attempt;
@@ -677,16 +464,35 @@ function solveN(working, pool, state) {
 }
 
 function solve(tiles) {
-    let state = { count: 0 },
-	solution = solveN([], tiles, state);
+    const order = c => (rank(c) << 3) + colour(c) + (isjoker(c) << 10);
+    
+    let state = { count: 0, begins: 0 },
+	sorted = tiles.slice(0);
+    sorted.sort((x,y)=>(order(x)-order(y)));
+    state.solution = solveN([], sorted, state);
 
-    state.solution = solution;
     return state;
 }
 
 function sol_len(solve_output) {
     if (solve_output.solution) return solve_output.solution.length;
     return 0;
+}
+
+function bag() {
+    let out = [];
+    for (let i = 1 ; i <= 64; ++i) {
+	if ((i%16)<14) { out.push(i); out.push(i); }
+    }
+    for (let i = 0 ; i < out.length - 1; ++i) {
+	let j = i + Math.floor(Math.random() * (out.length - i));
+	if (j > i) {
+	    out[j] += out[i];
+	    out[i] = out[j] - out[i];
+	    out[j] = out[j] - out[i];
+	}
+    }
+    return out;
 }
 
 tests = {
@@ -739,9 +545,9 @@ tests = {
     run5: function() { return check(isastraight(tocards('T5 T6 JS T8')))[0] == 5; },
     run6: function() { return check(isastraight(tocards('T5 T6 JD T8')))[0] == 0; },
     run7: function() { return check(isastraight(tocards('T5 T6 JD T9')))[0] == 5; },
-    run8: function() { return check(JSON.stringify(isastraight(tocards('Y8 JD Y9')))) == '[8,2,2]'; },
+    run8: function() { return check(JSON.stringify(isastraight(tocards('Y8 JD Y9')))) == '[8,2]'; },
     run9: function() { return isastraight(tocards('Y8 Y9 Y10 Y6'))[0] == 0; },
-    run10: function() { return check(JSON.stringify(isastraight(tocards('Y6 JS Y8 Y9')))) == '[6,2,1]'; },
+    run10: function() { return check(JSON.stringify(isastraight(tocards('Y6 JS Y8 Y9')))) == '[6,2]'; },
     addr1: function() { return canadd(tocards('Y8 Y9 Y10'), tocard('Y11')) == ST_GOOD; },
     addr2: function() { return check(canadd(tocards('Y8 Y9 Y10'), tocard('Y6'))) == ST_BAD; },
     addr3: function() { return canadd(tocards('Y8 Y9 Y10'), tocard('T7')) == ST_BAD; },
@@ -774,14 +580,14 @@ tests = {
     jm5: function() { return check(isastraight(tocards('R3 JS R3 JM R4')))[0] == 3; },
     jm6: function() { return check(isastraight(tocards('R3 R3 JM R4')))[0] == 0; },
     jm7: function() { return isaset(tocards('R1 JM'))[0] == 0; },
-    jm8: function() { return canadd_asset(tocards('R9 R9 JM'), tocard('T10')) == ST_BAD; },
-    jm9: function() { return check(canadd_asstr(tocards('R9 R9 JM'), tocard('T10'))) == ST_BAD; },
-    jm10: function() { return check(canadd_asstr(tocards('R9 R9 JM'), tocard('R10'))) == ST_INCOMPLETE; },
+    jm8: function() { return canadd(tocards('R9 R9 JM'), tocard('T10')) == ST_BAD; },
+    jm9: function() { return check(canadd(tocards('R9 R9 JM'), tocard('T10'))) == ST_BAD; },
+    jm10: function() { return check(canadd(tocards('R9 R9 JM'), tocard('R10'))) == ST_INCOMPLETE; },
     jm11: function() { return check(isastraight(tocards('T10 JM R9')))[0] == 0; },
-    jm12: function() { return check(canadd_asstr(tocards('R9 R9 JM R10'), tocard('R10'))) == ST_GOOD; },
-    jm13: function() { return check(canadd_asstr(tocards('R9 R9 JM R10'), tocard('R8'))) == ST_BAD; },
-    jm14: function() { return check(canadd_asstr(tocards('R9 R9 JM'), tocard('T10'))) == ST_BAD; },
-    jm15: function() { return canadd_asset([26, 48], 9) == ST_BAD; },
+    jm12: function() { return check(canadd(tocards('R9 R9 JM R10'), tocard('R10'))) == ST_GOOD; },
+    jm13: function() { return check(canadd(tocards('R9 R9 JM R10'), tocard('R8'))) == ST_BAD; },
+    jm14: function() { return check(canadd(tocards('R9 R9 JM'), tocard('T10'))) == ST_BAD; },
+    jm15: function() { return canadd([26, 48], 9) == ST_BAD; },
     jm15: function() { return isaset([26, 48, 9]) == 0; },
 
     solve1: function() { return check(JSON.stringify(solve(tocards('R5 R6 R7')).solution)) == '[[5,6,7]]'; },
@@ -789,7 +595,7 @@ tests = {
     solve3: function() { return check(solve([26]).solution) == null; },
     solve4: function() { return check(solve([5,6,7,26]).solution) == null; },
     solve5: function() { return sol_len(check(solve(tocards('R5 R6 R7 T10 T11 T12')))) == 2; },
-    solve6: function() { return sol_len(solve(tocards('R2 R3 R4 R5 JS B2 Y2 R8 T9 T10 JD'))) == 3; },
+    solve6: function() { return sol_len(check(solve(tocards('R2 R3 R4 R5 JS B2 Y2 R8 T9 T10 JD')))) == 3; },
 //    solve7: function() { return (solve(tocards('R9 R9 JM B8 B9 B10 B11 B12 B13 B11 R11 Y11 R10 B10 Y10 T10 T11 T12 Y7 Y8 Y9 Y10 R2 B2 Y2 T2 Y12 B12 R12 R3 Y3 T3'))).solution.length == 9; },
     solve7: function() { return sol_len(check((solve(tocards('R1 R1 JM'))))) == 1; },
     solve8: function() { return sol_len(check((solve(tocards('R9 R9 JM B8 B9 B10 B11 B12 B13 B11 R11 Y11 R10 B10 Y10 T10'))))) == 5; },
@@ -829,9 +635,11 @@ tests = {
     rmdet3: function() { return detailed(tocards('B5 T5 JM')).straight == false; },
     rmdet4: function() { return detailed(tocards('B5 B5 B6 B6 JM')).straight == true; },
     rmdet5: function() { return detailed(tocards('B5 JS JM')).straight == true; },
+    rmdet6: function() { return detailed(tocards('R9 R9 JM R10')).set == false; },
     scdet1: function() { return detailed(tocards('R5 T7 JC')).straight == true; },
     scdet2: function() { return detailed(tocards('R5 R7 JC')).straight == false; },
     scdet1: function() { return detailed(tocards('R5 T8 JC')).straight == false; },
     smadd1: function() { return check(canadd_t(detailed(tocards('R1')), tocard('JM'))) == ST_INCOMPLETE; },
     smadd2: function() { return check(canadd_t(detailed(tocards('R1 JM')), tocard('R1'))) == ST_GOOD; },
+    jdadd1: function() { return canadd_t(detailed([3, 19, 32]), 35) == false; },
 }

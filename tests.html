@@ -3,12 +3,23 @@
     <title>Rummi tests</title>
     <style type='text/css'>
       span.tilecolour-R { background: red; color: white }
-      span.tilecolour-T { background: lightblue; color: black }
-      span.tilecolour-Y { background: lightyellow; color: black }
+      span.tilecolour-T { background: aqua; color: black }
+      span.tilecolour-Y { background: yellow; color: black }
       span.tilecolour-B { background: black; color: white }
-      #solution li { margin-bottom: 1ex; }
+      #solution li {
+	  margin: 1ex;
+	  border: 1px solid black;
+	  padding: 2ex 2ex 2ex 1ex;
+	  list-style: none;
+	  width: fit-content;
+	  background: #e0e0e0;
+	  display: inline-block;
+      }
       li > span { margin-left: 1ex; padding: 4px }
       li > span.joker { font-weight: bold }
+      #tosolve span { margin-left: 1ex; padding: 4px }
+      #tosolve span.joker { font-weight: bold }
+      #tosolve { margin: 1ex; }
     </style>
     <script src='./rummi.js'></script>
     <script>
@@ -43,7 +54,7 @@
       }
       function dosolve() {
 	  let arr = tocards(document.getElementById('hand').value),
-	      li = document.querySelector('#tosolve ul li'),
+	      li = document.querySelector('#tosolve'),
 	      display = document.getElementById('solution');
 	  arr.sort((x, y) => (x - y));
 	  while (li.firstChild) li.removeChild(li.firstChild);
@@ -66,7 +77,7 @@
 	      }
 	  }
 	  document.getElementById('solvestatus').textContent =
-	      'Considered ' + soln.count + ' nodes in ' + millis + 'ms - ' +
+	      'Considered ' + soln.begins + '/' + soln.count + ' nodes in ' + millis + 'ms - ' +
 	      (soln.solution?'Solved':'Not Solved');
       }
 	  
@@ -78,10 +89,11 @@
       <p>Ranks: 1 - 13</p>
       <p>Jokers: JS JD JM JC</p>
       <p>Example hand: R2 R3 R4 R5 JS B2 Y2 R8 T9 T10 JD</p>
+      <p>Example big hand: R1 R1 R10 R11 R12 JS JS T1 R2 T6 T8 T8 T9 T11 T13 T13 JD Y2 Y2 Y3 Y6 Y7 R4 Y9 Y11 Y13 Y13 JM B1 B1 B2 B3 B4 B4 B5 B6 B6 B7 B7 B8 B8 B9 B10 R6 B13 JC JC R8 R9 R9</p>
     </div>
     <input id='hand' width='80'></input>
     <button onclick='dosolve()'>Solve</button>
-    <div id='tosolve'><ul><li></li></ul></div>
+    <div id='tosolve'></div>
     <p id='solvestatus'></p>
     <ul id='solution'></ul>
     <hr/>
