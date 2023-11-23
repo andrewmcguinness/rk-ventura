@@ -74,14 +74,14 @@ function separate(arr) {
 }
 
 // constraint: never begin a straight with a joker
-// returns [is, extra-info]
+// compatibility shim for old test cases
 function isaset(arr) {
     let det = detailed(arr);
     if (det.set) return [det.lowrank];
     else return [0];
 }
 
-// returns start-of-straight, colour, skip-count
+// compatibility shim for old test cases
 function isastraight(arr1) {
     let det = detailed(arr1);
     if (det.straight) return [det.lowrank, det.lowcolour];
@@ -216,6 +216,7 @@ function setdetails(d) {
     return;
 }
 
+// number of physical tiles in a group
 function physical(dets) {
     return dets.tiles.length + dets.jokers[1] + dets.jokers[2] + dets.jokers[3] + dets.jokers[4];
 }
@@ -492,6 +493,19 @@ function bag() {
 	    out[j] = out[j] - out[i];
 	}
     }
+    return out;
+}
+
+function random_solve(n) {
+    const a = bag().slice(0,n),
+	  out = solve(a);
+    out.src = a;
+    return out;
+}
+
+function test_vector(cases, bag_size) {
+    out = [];
+    for (let i = 0; i < cases; ++i) out.push(random_solve(bag_size));
     return out;
 }
 

@@ -22,7 +22,10 @@
       #tosolve { margin: 1ex; }
     </style>
     <script src='./rummi.js'></script>
+    <script src='./fullcases.js'></script>
     <script>
+
+      
       function clear() {
 	  for (let l of ['errors', 'output']) {
 	      const e = document.getElementById(l);
@@ -61,7 +64,7 @@
 	  arr.map(c => prettytile(c, document)).forEach(el => li.appendChild(el));
 	  while (display.firstChild) display.removeChild(display.firstChild);
 	  document.getElementById('solvestatus').textContent = 'Working...';
-	  setTimeout(() => showsolve(arr), 250);
+	  setTimeout(() => showsolve(arr), 100);
       }
 
       function showsolve(tiles) {

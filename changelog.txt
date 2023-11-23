@@ -1,0 +1,2 @@
+Added some randomly-generated solveable 40-tile cases
+	
