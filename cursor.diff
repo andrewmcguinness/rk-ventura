@@ -1,0 +1,71 @@
++++ ./rummi.js	2023-11-18 09:26:25.500003720 +0000
+@@ -424,17 +424,21 @@
+     return out;
+ }
+ 
+-function solveN(working, pool, state) {
++// working is a group that is being built up
++// cursor is the index in the pool of the last non-joker tile added (latest in pool sort order)
++// pool is the tiles available
++// state holds counters.
++function solveN(working, cursor, pool, state) {
+     if (pool.length == 0) {
+ 	if (working.length == 0) return [];
+ 	else return null;
+     }
+     if (working.length == 0) {
+-	let pool2 = pool.slice(1);
+-	return solveN([pool[0]], pool2, state);
++      let pool2 = pool.slice(1);
++      return solveN([pool[0]], 0, pool2, state);
+     }
+     let details = detailed(working);
+-    for (let i = 0; i < pool.length; ++i) {
++    for (let i = cursor; i < pool.length; ++i) {
+ 	++(state.count);
+ 	let st = ST_INCOMPLETE;
+ 	if (working.length) {
+@@ -445,18 +449,18 @@
+ 		next = pool2.splice(i, 1)[0];
+ 
+ 	    if (st == ST_GOOD) {
+-		++(state.begins);
+-		let attempt = solveN([], pool2, state);
+-		if (attempt) {
+-		    working.push(next);
+-		    attempt.push(working);
+-		    return attempt;
+-		}
++	      ++(state.begins);
++	      let attempt = solveN([], 0, pool2, state);
++	      if (attempt) {
++		working.push(next);
++		attempt.push(working);
++		return attempt;
++	      }
+ 	    }
+ 	    
+-	    let working2 = working.slice(0);
+-	    working2.push(next);
+-	    let attempt = solveN(working2, pool2, state);
++	  let working2 = working.slice(0);
++	  working2.push(next);
++	  let attempt = solveN(working2, cursor, pool2, state);
+ 	    if (attempt) {
+ 		return attempt;
+ 	    }
+@@ -467,10 +471,10 @@
+ function solve(tiles) {
+     const order = c => (rank(c) << 3) + colour(c) + (isjoker(c) << 10);
+     
+-    let state = { count: 0, begins: 0 },
+-	sorted = tiles.slice(0);
+-    sorted.sort((x,y)=>(order(x)-order(y)));
+-    state.solution = solveN([], sorted, state);
++  let state = { count: 0, begins: 0 },
++      sorted = tiles.slice(0);
++  sorted.sort((x,y)=>(order(x)-order(y)));
++  state.solution = solveN([], 0, sorted, state);
+ 
+     return state;
+ }

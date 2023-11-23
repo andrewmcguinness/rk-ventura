@@ -1,2 +1,13 @@
 Added some randomly-generated solveable 40-tile cases
-	
+
+(only the first actually solves)
+
+Using a web worker to make the solve asynchronous
+
+Needs to run in a webserver:
+
+$ cd /mnt/devel/rummi
+$ python3 -m http:server 9000
+
+still working
+

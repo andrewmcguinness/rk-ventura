@@ -55,6 +55,7 @@
 	  prettymeld(arr).map(c => prettytile(c, document)).forEach(el => li.appendChild(el));
 	  return li;
       }
+
       function dosolve() {
 	  let arr = tocards(document.getElementById('hand').value),
 	      li = document.querySelector('#tosolve'),
@@ -67,23 +68,40 @@
 	  setTimeout(() => showsolve(arr), 100);
       }
 
-      function showsolve(tiles) {
-	  let display = document.getElementById('solution'),
-	      starttm = new Date().getTime(),
-	      soln = solve(tiles),
-	      millis = new Date().getTime() - starttm;
-	  console.log(soln);
-	  if (soln.solution) {
-	      for (let meld of soln.solution) {
-		  const li = itemof(meld);
-		  display.appendChild(li);
-	      }
+      function solve_complete(tiles, start_time, soln) {
+	let display = document.getElementById('solution'),
+	    millis = new Date().getTime() - start_time;
+	console.log(soln);
+	if (soln.solution) {
+	  for (let meld of soln.solution) {
+	    const li = itemof(meld);
+	    display.appendChild(li);
 	  }
-	  document.getElementById('solvestatus').textContent =
-	      'Considered ' + soln.begins + '/' + soln.count + ' nodes in ' + millis + 'ms - ' +
-	      (soln.solution?'Solved':'Not Solved');
+	}
+	document.getElementById('solvestatus').textContent =
+	  'Considered ' + soln.begins + '/' + soln.count + ' nodes in ' + millis + 'ms - ' +
+	  (soln.solution?'Solved':'Not Solved');
+	return soln;
       }
 	  
+      function showsolve(tiles) {
+	let starttm = new Date().getTime(),
+	    soln = solve(tiles);
+
+	return solve_complete(tiles, starttm, soln);
+      }
+
+      function workersolve(tiles) {
+	if (!window.solve_worker) solve_worker = new Worker('./worker.js');
+	let starttm = new Date().getTime();
+
+	solve_worker.onmessage = (msg) => {
+	  console.log('solve ran');
+	  solve_complete(tiles, starttm, msg.data);
+	}
+	solve_worker.postMessage(tiles);
+	console.log('waiting for solve');
+      }
     </script>
   </head>
   <body>
