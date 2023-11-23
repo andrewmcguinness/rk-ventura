@@ -27,3 +27,5 @@ version 13 -- multi-joker straights change
 version 14 -- create Details type
 
 version 15 -- Use Details type instead of working array
+
+version 16 -- Delete obsolete code (jokers array and raw array)

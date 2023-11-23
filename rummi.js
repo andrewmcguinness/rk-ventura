@@ -66,21 +66,6 @@ ST_BAD = 0;
 ST_INCOMPLETE = 1;
 ST_GOOD = 2;
 
-function separate(arr) {
-    const order = c => (rank(c) << 3) + colour(c) + (isjoker(c) << 10);
-    
-  arr.sort(tilesort);
-    let out = [arr, 0, 0, 0, 0], tot = 0;
-    for (i = arr.length - 1; i >= 0; --i) {
-	let c = arr[i];
-	if (isjoker(c)) {
-	    ++out[colour(c)]; ++tot;
-	} else break;
-    }
-    arr.splice(arr.length - tot);
-    return out;
-}
-
 // constraint: never begin a straight with a joker
 // compatibility shim for old test cases
 function isaset(arr) {
@@ -99,10 +84,7 @@ function isastraight(arr1) {
 function Details(arr1, next) {
   if (arr1.tiles) { // copy
     Object.assign(this, arr1);
-    this.jokers = arr1.jokers.slice(0);
     this.tiles = arr1.tiles.slice(0);
-    this.raw = arr1.raw.slice(0);
-    this.raw.push(next);
     if (arr1.mirror_tiles) this.mirror_tiles = arr1.mirror_tiles.slice(0);
   } else if (arr1.length == 0) {
     this.tiles = [];
@@ -110,9 +92,7 @@ function Details(arr1, next) {
     this.complete = false;
   } else if ((arr1.length == 1) && (!isjoker(arr1[0]))) { // new
     let c = arr1[0];
-    this.raw = arr1.slice(0);
-    this.jokers = separate(this.raw);
-    this.tiles = this.jokers[0];
+    this.tiles = arr1.slice(0)
     this.straight = 1;
     this.set = 1;
     this.colours = 1<<colour(c);
@@ -122,137 +102,8 @@ function Details(arr1, next) {
     this.highcolour = colour(c);
     this.mirrored = false;
     this.complete = false;
-    this.jokers[0] = null; // tidy up
   }
   return this;
-}
-
-Details.prototype.straightdetails = function() {
-  let arr = this.tiles,
-      jokers = this.jokers.slice(0); // copy to count through
-  this.straight = false;
-  if (jokers[3] == 1) { // J_MIRROR
-    console.log('mirroring', this);
-    this.mirrored = true;
-    jokers[3] = 0;
-    if (!arr.length) {
-      return; // TODO other jokers could be there
-    }
-    this.lowrank = rank(arr[0]);
-    this.lowcolour = colour(arr[0]);
-    this.highrank = this.lowrank - 1;
-    this.highcolour = this.lowcolour;
-    for (let i = 0; i < arr.length; ++i) {
-      let c = arr[i],
-	  pair = i + 1;
-      if ((pair < arr.length) && (arr[pair] == c)) {
-	i = pair;
-      }
-      else if (jokers[1]) { // pair of the run tile is a JS
-	--jokers[1];
-      }
-      else return; // not paired
-	    
-      if (colour(c) != this.highcolour) return; // colour wrong
-      if (rank(c) != this.highrank + 1) return;
-      ++this.highrank;
-    }
-    // every card is paired and following straight
-    if ((jokers[1] + jokers[2] + jokers[3]) > 0)
-      return; // TODO extra jokers included
-
-    this.straight = true;
-    return;
-  }
-    
-  if (!arr[0]) return; // hand with only jokers
-
-  this.lowrank = rank(arr[0]);
-  this.lowcolour = colour(arr[0]);
-  this.highrank = this.lowrank;
-  this.highcolour = this.lowcolour;
-  for (var i = 1; i < arr.length; ++i) {
-    const c = arr[i];
-    if ((colour(c) == this.highcolour) &&
-	(rank(c) <= 1 + this.highrank + jokers[1] + (2*jokers[2]) )) {
-      while (jokers[2] && (rank(c) >= this.highrank + 3)) {
-	--jokers[2];
-	this.highrank += 2;
-      }
-      while (jokers[1] && (rank(c) > this.highrank + 1)) {
-	--jokers[1];
-	++this.highrank;
-      }
-      if (rank(c) == this.highrank + 1) {
-	++this.highrank;
-      } else return;
-    }
-    else if ((jokers[4] > 0) &&  // J_CHANGE
-	     (colour(c) != this.highcolour) &&
-	     (rank(c) == this.highrank + 2)) {
-      --jokers[4];
-      this.highcolour = colour(c);
-      this.highrank += 2;
-    }
-    else return;
-  }
-  while (jokers[2]) {
-    if (this.highrank < 12) this.highrank += 2;
-    else this.lowrank -= 2;
-    --jokers[2];
-  }
-  while (jokers[1]) {
-    if (this.highrank < 13) ++this.highrank;
-    else --this.lowrank;
-    --jokers[1];
-  }
-  if (jokers[3] + jokers[4] > 0) return;
-  if ((this.lowrank < 1) || (this.highrank > 13)) return;
-  this.straight = true;
-  return;
-}
-
-// d is a detail structure
-Details.prototype.setdetails = function() {
-  this.set = false;
-  this.colours = 0;
-  if (!this.tiles.length) return;
-  let jokers = this.jokers.slice(0);
-  if (jokers[4]) return; // no change joker in a set
-  if (jokers[3] > 1) return; // two mirrors??
-    
-  if (jokers[3]) {
-    this.mirrored = true;
-    if (this.physical() < 3) return;
-    let c = this.tiles[0];
-	this.lowrank = rank(c);
-	for (let i = 1; i < this.tiles.length; i += 2) {
-	  if ((this.tiles[i] != this.tiles[i-1]) || (rank(this.tiles[i]) != this.lowrank))
-	    return;
-	  this.colours |= (1 << colour(this.tiles[i]));
-	}
-    if (this.tiles.length%2) {
-      let odd = this.tiles[this.tiles.length - 1];
-      if (rank(odd) != this.lowrank) return;
-    }
-    this.set = true;
-    return;
-  }
-
-  this.colours = 1 << colour(this.tiles[0]);
-  this.lowrank = rank(this.tiles[0]);
-
-  for (var i = 1; i < this.tiles.length; ++i) {
-    const c = this.tiles[i];
-    if (rank(c) != this.lowrank) return;
-    const cbit = 1 << colour(c);
-    if (this.colours & cbit) return; // dupe colour
-    this.colours |= cbit;
-  }
-  if (this.tiles.length + jokers[1] + (2*jokers[2]) > 4) return;
-
-  this.set = true;
-  return;
 }
 
 // number of physical tiles in a group
@@ -273,76 +124,10 @@ function prettytile(c, doc) {
   return el;
 }
     
-function prettystraight(arr1) {
-    const arr = arr1.slice(0);
-    if (!arr.length) return null; // error
-    let jokers = separate(arr),
-	arr2 = jokers[0],
-	low = rank(arr2[0]),
-	runcolour = colour(arr2[0]),
-	skip = 0,
-	ordered = [arr2[0]];
-    for (var i = 1; i < arr.length; ++i) {
-      const c = arr2[i];
-      if ((colour(c) != runcolour) &&
-	  (rank(c) >= low + i + skip + 1) &&
-	  (jokers[4] > 0)) {
-	runcolour = colour(c);
-	skip += 1;
-	ordered.push(J_CHANGE);
-      }
-      while ((colour(c) == runcolour) &&
-	     (rank(c) >= low + i + 2 + skip) &&
-	     (jokers[2] > 0)) {
-	--jokers[2];
-	skip += 2;
-	ordered.push(J_DOUBLE);
-      }
-      while ((colour(c) == runcolour) &&
-	     (rank(c) >= low + i + 1 + skip) &&
-	     (jokers[1] > 0)) {
-	--jokers[1];
-	skip += 1;
-	ordered.push(J_SINGLE);
-      }
-      if ((colour(c) == runcolour) &&
-	  (rank(c) == (low + i + skip))) {
-	ordered.push(c);
-      }
-      else return null;
-    }
-    let high = low + arr.length + skip - 1;
-    while (jokers[2]) {
-	if (high < 12) {
-	    high += 2;
-	    ordered.push(J_DOUBLE);
-	} else {
-	    low -= 2;
-	    ordered.unshift(J_DOUBLE);
-	}
-	--jokers[2];
-	skip += 2;
-    }
-    while (jokers[1]) {
-	if (high < 13) {
-	    ++high;
-	    ordered.push(J_SINGLE);
-	} else {
-	    --low;
-	    ordered.unshift(J_SINGLE);
-	}
-	--jokers[1];
-	skip += 1;
-    }
-    if ((low < 1) || (high > 13)) return null;
-    
-    return ordered;
-}
-		    
 		   
 function prettymeld(arr) {
   let det = arr;
-  if (!det.raw) det = new Details(arr);
+  if (!det.tiles) det = new Details(arr);
 
   if (det.mirrored) {
     return det.tiles.concat([J_MIRROR]).concat(det.mirror_tiles.slice(0).reverse());
@@ -621,7 +406,7 @@ function solveN(details, cursor, pool, state, depth) {
 
       let next = pool[i],
 	  st = details.canadd(next);
-      console.log(st);
+
       if (st) {
 	let pool2 = pool_remove(pool, i);
 
@@ -776,7 +561,6 @@ tests = {
     jc5: function() { return check(canadd(tocards('Y7 Y8 Y9 JC'), tocard('Y11'))) == ST_BAD; },
     jc6: function() { return canadd(tocards('Y7 JS Y9 JC'), tocard('R11')) == ST_GOOD; },
     jc7: function() { return check(isastraight(tocards('Y8 Y9 JC Y11')))[0] == 0; },
-    sep1: function() { return JSON.stringify(separate(tocards('JS R1 JD B2 T6'))) == '[[1,50,22],1,1,0,0]'; },
     jm1: function() { return isaset(tocards('R1 JM R1'))[0] == 1; },
     jm2: function() { return isaset(tocards('R1 JM T1'))[0] == 0; },
     jm3: function() { return check(isaset(tocards('R3 JM R3 T3 T3')))[0] == 3; },
