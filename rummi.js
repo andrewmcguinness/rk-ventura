@@ -463,6 +463,14 @@ function runtests() {
     return out;
 }
 
+// return a pool with element i removed
+function pool_remove(pool, el) {
+  const ret = pool.slice(0, pool.length - 1);
+  for (let i = el; i < ret.length; ++i)
+    ret[i] = pool[i+1];
+  return ret;
+}
+
 // working is a group that is being built up
 // cursor is the index in the pool of the last non-joker tile added (latest in pool sort order)
 // pool is the tiles available
@@ -497,8 +505,7 @@ function solveN(working, cursor, pool, state) {
       }
 
       if (st) {
-	let pool2 = pool.slice(0); // TODO keep one pool2 and switch it around
-	pool2.splice(i, 1);
+	let pool2 = pool_remove(pool, i);
 
 	if (st == ST_GOOD) {
 	  ++(state.vars.begins);
@@ -525,7 +532,7 @@ function solve(tiles, cb) {
 		{ count: 0, begins: 0,
 		  completed: false, succeeded: false,
 		  start_time: new Date().getTime() } },
-      sorted = tiles.slice(0);
+      sorted = new Int8Array(tiles);
   sorted.sort(tilesort);
   state.vars.solution = solveN([], 0, sorted, state);
   state.vars.completed = true;

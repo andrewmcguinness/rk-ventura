@@ -17,3 +17,6 @@ about 8X faster on the 40-tile test case
 Still opportunities with jokers (if two JS, will try one then the other!!)
 
 version 10 -- decorative changes
+
+version 11 -- change pool to an Int8Array.  Makes no performance difference!
+
