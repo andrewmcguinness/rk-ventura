@@ -43,10 +43,13 @@
       }
       function dosolve() {
 	  let arr = tocards(document.getElementById('hand').value),
-	      li = document.querySelector('#tosolve ul li');
+	      li = document.querySelector('#tosolve ul li'),
+	      display = document.getElementById('solution');
 	  arr.sort((x, y) => (x - y));
 	  while (li.firstChild) li.removeChild(li.firstChild);
 	  arr.map(c => prettytile(c, document)).forEach(el => li.appendChild(el));
+	  while (display.firstChild) display.removeChild(display.firstChild);
+	  document.getElementById('solvestatus').textContent = 'Working...';
 	  setTimeout(() => showsolve(arr), 250);
       }
 
@@ -56,7 +59,6 @@
 	      soln = solve(tiles),
 	      millis = new Date().getTime() - starttm;
 	  console.log(soln);
-	  while (display.firstChild) display.removeChild(display.firstChild);
 	  if (soln.solution) {
 	      for (let meld of soln.solution) {
 		  const li = itemof(meld);

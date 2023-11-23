@@ -359,21 +359,14 @@ function prettytile(c, doc) {
 function prettystraight(arr1) {
     const arr = arr1.slice(0);
     if (!arr.length) return null; // error
-    arr.sort((x,y)=>((x+(isjoker(x)*1000)-(y+(isjoker(y)*1000)))))
-    let jokers = [0, 0, 0, 0], tot = 0;
-    for (i = arr.length - 1; i >= 0; --i) {
-	let c = arr[i];
-	if (isjoker(c)) {
-	    ++jokers[colour(c)]; ++tot;
-	} else break;
-    }
-    arr.splice(arr.length - tot);
-    let low = rank(arr[0]),
-	runcolour = colour(arr[0]),
+    let jokers = separate(arr),
+	arr2 = jokers[0],
+	low = rank(arr2[0]),
+	runcolour = colour(arr2[0]),
 	skip = 0,
-	ordered = [arr[0]];
+	ordered = [arr2[0]];
     for (var i = 1; i < arr.length; ++i) {
-	const c = arr[i];
+	const c = arr2[i];
 	if ((colour(c) == runcolour) &&
 	    (rank(c) == (low + i + skip))) {
 	    ordered.push(c);
@@ -612,7 +605,7 @@ function solve1(tiles) {
     else return false;
 }
 
-function solveN(working, pool, state) {
+function solveNold(working, pool, state) {
     if (pool.length == 0) {
 	if (working.length == 0) return [];
 	else return null;
@@ -647,7 +640,7 @@ function solveN(working, pool, state) {
     }
 }
 
-function solveNnew(working, pool, state) {
+function solveN(working, pool, state) {
     if (pool.length == 0) {
 	if (working.length == 0) return [];
 	else return null;
@@ -657,7 +650,7 @@ function solveNnew(working, pool, state) {
 	let st = ST_INCOMPLETE;
 	++(state.count);
 	if (working.length) {
-	    st = canadd(working, pool[i]);
+	    st = canadd_t(details, pool[i]);
 	}
 	if (st) {
 	    let pool2 = pool.slice(0), // TODO keep one pool2 and switch it around
