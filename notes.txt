@@ -26,9 +26,17 @@ Object { count: 1461489910, begins: 30984778, solution: undefined }
 
 -- cursor put in
 
-old
+old cases[0]
 Considered 88517885/4397038878 nodes in 491716ms - Solved
 
-new
+new cases[0]
 Considered 11495485/523304445 nodes in 61103ms - Solved
+
+example hand
+Considered 9704852/537438303 nodes in 64377ms - Solved
+
+-- avoid repeating with duplicate tiles
+cases[0]
+Considered 209043/9938305 nodes in 1448ms - Solved
+
 

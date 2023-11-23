@@ -440,31 +440,37 @@ function solveN(working, cursor, pool, state) {
     let details = detailed(working);
     for (let i = cursor; i < pool.length; ++i) {
 	++(state.count);
-	let st = ST_INCOMPLETE;
-	if (working.length) {
-	    st = canadd_t(details, pool[i]);
-	}
-	if (st) {
-	    let pool2 = pool.slice(0), // TODO keep one pool2 and switch it around
-		next = pool2.splice(i, 1)[0];
+      while((i > 0) && (pool[i] == pool[i-1])) ++i; // skip duplicates if failed already
+      if (i >= pool.length) break;
 
-	    if (st == ST_GOOD) {
-	      ++(state.begins);
-	      let attempt = solveN([], 0, pool2, state);
-	      if (attempt) {
-		working.push(next);
-		attempt.unshift(working);
-		return attempt;
-	      }
-	    }
-	    
-	  let working2 = working.slice(0);
-	  working2.push(next);
-	  let attempt = solveN(working2, (isjoker(next))?cursor:i, pool2, state);
-	    if (attempt) {
-		return attempt;
-	    }
+      let st = ST_INCOMPLETE,
+	  next = pool[i];
+
+      if (working.length) {
+	st = canadd_t(details, next);
+      }
+
+      if (st) {
+	let pool2 = pool.slice(0); // TODO keep one pool2 and switch it around
+	pool2.splice(i, 1);
+
+	if (st == ST_GOOD) {
+	  ++(state.begins);
+	  let attempt = solveN([], 0, pool2, state);
+	  if (attempt) {
+	    working.push(next);
+	    attempt.unshift(working);
+	    return attempt;
+	  }
 	}
+
+	let working2 = working.slice(0);
+	working2.push(next);
+	let attempt = solveN(working2, (isjoker(next))?cursor:i, pool2, state);
+	if (attempt) {
+	  return attempt;
+	}
+      }
     }
 }
 
