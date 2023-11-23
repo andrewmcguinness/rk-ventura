@@ -32,6 +32,14 @@ const Colours = [ 'R', 'T', 'Y', 'B' ],
       J_MIRROR = 0x30,
       J_CHANGE = 0x40;
 
+function ordering(c) {
+  return (rank(c) << 3) + colour(c) + (isjoker(c) << 10);
+}
+
+function tilesort(x,y) {
+  return ordering(x)-ordering(y);
+}
+
 // for testing, not optimised
 
 function card(c, r) {
@@ -61,7 +69,7 @@ ST_GOOD = 2;
 function separate(arr) {
     const order = c => (rank(c) << 3) + colour(c) + (isjoker(c) << 10);
     
-    arr.sort((x,y)=>(order(x) - order(y)));
+  arr.sort(tilesort);
     let out = [arr, 0, 0, 0, 0], tot = 0;
     for (i = arr.length - 1; i >= 0; --i) {
 	let c = arr[i];
@@ -326,12 +334,39 @@ function prettystraight(arr1) {
 		   
 function prettymeld(arr) {
     console.log(arr);
-    let det = detailed(arr);
+  let det = detailed(arr);
+  if (det.mirrored) {
+    arr.sort(tilesort);
+    let tail = [], head = [], numtiles = 0;
+    for (let i = 0; i < (arr.length - 1); ++i) {
+      head.push(arr[i]);
+      ++numtiles;
+      if (arr[i+1] == arr[i]) {
+	tail.unshift(arr[++i]);
+	++numtiles;
+      } else {
+	tail.unshift(-1);
+      }
+      if ((head.length * 2) + 1 == arr.length) break;
+    }
+    for (let i = arr.length - 1; i >= numtiles; --i) {
+      if (arr[i] == J_MIRROR) head.push(arr[i]);
+      else if (arr[i] == J_SINGLE) {
+	for (let j = 0 ; j < tail.length; ++j)
+	  if (tail[j] < 0) {
+	    tail[j] = arr[i];
+	    break;
+	  }
+      }
+    }
+    return head.concat(tail);
+  } else {
     if (det.set) {
-	arr.sort();
+	arr.sort(tilesort);
 	return arr;
     }
-    else return prettystraight(arr) || arr.sort();
+    else return prettystraight(arr) || arr.sort(tilesort);
+  }
 }
 
 function canadd_t(dets, c) {
@@ -486,14 +521,12 @@ function solveN(working, cursor, pool, state) {
 }
 
 function solve(tiles, cb) {
-    const order = c => (rank(c) << 3) + colour(c) + (isjoker(c) << 10);
-    
   let state = { cb: cb, vars:
 		{ count: 0, begins: 0,
 		  completed: false, succeeded: false,
 		  start_time: new Date().getTime() } },
       sorted = tiles.slice(0);
-  sorted.sort((x,y)=>(order(x)-order(y)));
+  sorted.sort(tilesort);
   state.vars.solution = solveN([], 0, sorted, state);
   state.vars.completed = true;
   state.vars.succeeded = !!(state.vars.solution);
