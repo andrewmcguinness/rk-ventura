@@ -20,3 +20,4 @@ version 10 -- decorative changes
 
 version 11 -- change pool to an Int8Array.  Makes no performance difference!
 
+version 12 -- add a "play" page for cheating at the game.

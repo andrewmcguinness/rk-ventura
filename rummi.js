@@ -276,20 +276,20 @@ function prettystraight(arr1) {
 	    (rank(c) == (low + i + skip))) {
 	    ordered.push(c);
 	}
-	else if ((jokers[1] > 0) &&
-		 (colour(c) == runcolour) &&
-		 (rank(c) == low + i + 1 + skip)) {
-	    --jokers[1];
-	    skip += 1;
-	    ordered.push(J_SINGLE);
-	    ordered.push(c);
-	}
 	else if ((jokers[2] > 0) &&
 		 (colour(c) == runcolour) &&
 		 (rank(c) == low + i + 2 + skip)) {
 	    --jokers[2];
 	    skip += 2;
 	    ordered.push(J_DOUBLE);
+	    ordered.push(c);
+	}
+	else if ((jokers[1] > 0) &&
+		 (colour(c) == runcolour) &&
+		 (rank(c) == low + i + 1 + skip)) {
+	    --jokers[1];
+	    skip += 1;
+	    ordered.push(J_SINGLE);
 	    ordered.push(c);
 	}
 	else if ((jokers[4] > 0) &&  // J_CHANGE
@@ -333,7 +333,6 @@ function prettystraight(arr1) {
 		    
 		   
 function prettymeld(arr) {
-    console.log(arr);
   let det = detailed(arr);
   if (det.mirrored) {
     arr.sort(tilesort);
@@ -371,7 +370,7 @@ function prettymeld(arr) {
 
 function canadd_t(dets, c) {
     let sz = physical(dets);
-    if (c == J_MIRROR) return (sz == 1)*ST_INCOMPLETE;
+    if (c == J_MIRROR) return (sz == 1)*ST_INCOMPLETE; // TODO does not allow long mirrors
 
     if (sz == 0) return (!isjoker(c))*ST_INCOMPLETE;
 
@@ -475,22 +474,23 @@ function pool_remove(pool, el) {
 // cursor is the index in the pool of the last non-joker tile added (latest in pool sort order)
 // pool is the tiles available
 // state holds counters.
-function solveN(working, cursor, pool, state) {
+function solveN(working, cursor, pool, state, depth) {
     if (pool.length == 0) {
 	if (working.length == 0) return [];
 	else return null;
     }
     if (working.length == 0) {
       let pool2 = pool.slice(1);
-      return solveN([pool[0]], 0, pool2, state);
+      return solveN([pool[0]], 0, pool2, state, depth);
     }
     let details = detailed(working);
     for (let i = cursor; i < pool.length; ++i) {
       ++(state.vars.count);
       if (!(state.vars.count & 0xffffff)) {
 	if (state.cb) {
-	  state.vars.working = working.length;
+	  state.vars.working = cardsstr(working);
 	  state.vars.pool = pool.length;
+	  state.vars.depth = depth;
 	  state.cb(state.vars);
 	}
       }
@@ -509,7 +509,7 @@ function solveN(working, cursor, pool, state) {
 
 	if (st == ST_GOOD) {
 	  ++(state.vars.begins);
-	  let attempt = solveN([], 0, pool2, state);
+	  let attempt = solveN([], 0, pool2, state, depth+1);
 	  if (attempt) {
 	    working.push(next);
 	    attempt.unshift(working);
@@ -519,7 +519,7 @@ function solveN(working, cursor, pool, state) {
 
 	let working2 = working.slice(0);
 	working2.push(next);
-	let attempt = solveN(working2, (isjoker(next))?cursor:i, pool2, state);
+	let attempt = solveN(working2, (isjoker(next))?cursor:i, pool2, state, depth);
 	if (attempt) {
 	  return attempt;
 	}
@@ -534,7 +534,7 @@ function solve(tiles, cb) {
 		  start_time: new Date().getTime() } },
       sorted = new Int8Array(tiles);
   sorted.sort(tilesort);
-  state.vars.solution = solveN([], 0, sorted, state);
+  state.vars.solution = solveN([], 0, sorted, state, 0);
   state.vars.completed = true;
   state.vars.succeeded = !!(state.vars.solution);
   state.vars.end_time = new Date().getTime();

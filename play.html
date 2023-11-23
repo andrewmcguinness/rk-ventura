@@ -1,0 +1,195 @@
+<html>
+  <head>
+    <title>Rummi Assistant</title>
+    <style type='text/css'>
+      span.tilecolour-R { background: red; color: white }
+      span.tilecolour-T { background: aqua; color: black }
+      span.tilecolour-Y { background: orange; color: black }
+      span.tilecolour-B { background: black; color: white }
+      #solution li {
+	  margin: 1ex;
+	  border: 1px solid black;
+	  padding: 2ex 2ex 2ex 1ex;
+	  list-style: none;
+	  width: fit-content;
+	  background: #e0e0e0;
+	  display: inline-block;
+      }
+      li > span { margin-left: 1ex; padding: 4px }
+      li > span.joker { font-weight: bold }
+      #tosolve span { margin-left: 1ex; padding: 4px }
+      #tosolve span.joker { font-weight: bold }
+      #tosolve { margin: 1ex; line-height: 2em; }
+      #solvebutton { height: 2em; width: 8em; }
+    </style>
+    <script src='./rummi.js'></script>
+    <script src='./fullcases.js'></script>
+    <script>
+      function parse_tiles(str) {
+	const pieces = str.toUpperCase().split(/[ ,]+/),
+	      tiles = [];
+	let prev = 0;
+
+	for (const t of pieces) {
+	  let tc = colour(prev), digits = '';
+	  for (c in Colours) if (t.includes(Colours[c])) tc = c;
+	  for (d of t) if (Number.isInteger(d - 0)) digits = digits.concat(d);
+	  if (!digits) digits = rank(prev);
+	  prev = card(tc, digits);
+	  if (t.includes('J'))
+	    for (j in Jokers)
+	      if (t == Jokers[j]) prev = (j - 0 + 1) << 4;
+	  if (prev) tiles.push(prev);
+	}
+	return tiles;
+      }
+
+      function dosolve() {
+	const tdiv = document.getElementById('table'),
+	      hdiv = document.getElementById('hand'),
+	      groups = [];
+	for (let box of tdiv.querySelectorAll('textarea')) {
+	  let contents = box.value.split('\n').map(parse_tiles);
+	  box.value = contents.map(cardsstr).join('\n');
+	  groups.push(contents);
+	}
+	for (let box of hdiv.querySelectorAll('textarea')) {
+	  let contents = box.value.split('\n').map(parse_tiles);
+	  box.value = contents.map(cardsstr).join('\n');
+	  groups.push(contents);
+	}
+	/*
+	  for (let group of box.value.split('\n'))
+	    for (let t of parse_tiles(group))
+	      arr.push(t);
+	for (let box of hdiv.querySelectorAll('textarea'))
+	  for (let group of box.value.split('\n'))
+	    for (let t of parse_tiles(group))
+	      arr.push(t);
+	arr.sort(tilesort);
+	*/
+	const li = document.querySelector('#tosolve'),
+	      display = document.getElementById('solution'),
+	      arr = groups.flat().flat();
+	arr.sort(tilesort);
+	
+	while (li.firstChild) li.removeChild(li.firstChild);
+	arr.map(c => prettytile(c, document)).forEach(el => {
+	  li.appendChild(el);
+	  li.append(document.createTextNode(' '));
+	});
+	while (display.firstChild) display.removeChild(display.firstChild);
+	document.getElementById('solvestatus').textContent = 'Working...';
+	console.log(arr);
+	workersolve(arr);
+      }
+      
+      function clear() {
+	  for (let l of ['errors', 'output']) {
+	      const e = document.getElementById(l);
+	      while (e.firstChild) e.removeChild(e.firstChild);
+	  }
+      }
+      function err(x) {
+	  const li = document.createElement('li');
+	  li.textContent = x;
+	  document.getElementById('errors').appendChild(li);
+      }
+      function out(x) {
+	  const li = document.createElement('li');
+	  li.textContent = x;
+	  document.getElementById('output').appendChild(li);
+      }
+      function go() {
+	  const selected = document.getElementById('onetest').value;
+	  if (selected) return runonetest(selected);
+	  const results = runtests();
+	  console.log(results);
+	  for (let e of results.failed) err(e);
+	  for (let o of results.all) out(o);
+      }
+      function itemof(arr) {
+	  const li = document.createElement('li');
+	  prettymeld(arr).map(c => prettytile(c, document)).forEach(el => li.appendChild(el));
+	  return li;
+      }
+
+      function solve_complete(tiles, start_time, soln) {
+	let display = document.getElementById('solution');
+	console.log(soln);
+	if (soln.solution) {
+	  for (let meld of soln.solution) {
+	    const li = itemof(meld);
+	    display.appendChild(li);
+	  }
+	}
+	document.getElementById('solvestatus').textContent =
+	  'Considered ' + soln.begins + '/' + soln.count + ' nodes in ' + soln.elapsed + 'ms - ' +
+	  (soln.succeeded?'Solved':'Not Solved');
+	return soln;
+      }
+	  
+      function showsolve(tiles) {
+	let starttm = new Date().getTime(),
+	    soln = solve(tiles);
+
+	return solve_complete(tiles, starttm, soln);
+      }
+
+      function get_worker() {
+	if (!window.solve_worker) solve_worker = new Worker('./worker.js');
+	return solve_worker;
+      }
+
+      function workersolve(tiles) {
+	get_worker();
+	let starttm = new Date().getTime();
+
+	solve_worker.onmessage = (msg) => {
+	  console.log('solve:', msg.data);
+	  if (msg.data.completed)
+	    solve_complete(tiles, starttm, msg.data);
+	  else {
+	    const seconds = (new Date().getTime() - msg.data.start_time)/1000;
+	    document.getElementById('solvestatus').textContent = 'Working ' + Math.floor(seconds) + 's';
+	  }
+	}
+	solve_worker.postMessage(tiles);
+	console.log('waiting for solve');
+      }
+
+      function random_hands(cases, bag_size) {
+	get_worker();
+	solve_worker.onmessage = (msg) => {
+	  console.log(msg.data);
+	  lastmsg = msg.data;
+	}
+	solve_worker.postMessage({test_vector: {cases: cases, bag_size: bag_size}});
+      }
+    </script>
+  </head>
+  <body>
+    <div>
+      <p>Colours: R T Y B</p>
+      <p>Ranks: 1 - 13</p>
+      <p>Jokers: JS JD JM JC</p>
+    </div>
+    <div id='table'>
+      <h3>Table</h3>
+      <textarea cols='25' rows='10'></textarea>
+      <textarea cols='25' rows='10'></textarea>
+      <textarea cols='25' rows='10'></textarea>
+    </div>
+    <div id='hand'>
+      <h3>Hand</h3>
+      <textarea cols='40' rows='3'></textarea>
+    </div>
+    
+    <button type='button' id='solvebutton' onclick='dosolve()'>Solve</button>
+    <div id='tosolve'></div>
+    <p id='solvestatus'></p>
+    <ul id='solution'></ul>
+  </body>
+</html>
+
+  

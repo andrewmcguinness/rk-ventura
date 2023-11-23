@@ -118,15 +118,6 @@
 	console.log('waiting for solve');
       }
 
-      function random_hands(cases, bag_size) {
-	get_worker();
-	solve_worker.onmessage = (msg) => {
-	  console.log(msg.data);
-	  lastmsg = msg.data;
-	}
-	solve_worker.postMessage({test_vector: {cases: cases, bag_size: bag_size}});
-      }
-
       function generate() {
 	clear();
 	input = [];
