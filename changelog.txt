@@ -25,3 +25,5 @@ version 12 -- add a "play" page for cheating at the game.
 version 13 -- multi-joker straights change
 
 version 14 -- create Details type
+
+version 15 -- Use Details type instead of working array
