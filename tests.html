@@ -57,15 +57,15 @@
       }
 
       function dosolve() {
-	  let arr = tocards(document.getElementById('hand').value),
-	      li = document.querySelector('#tosolve'),
-	      display = document.getElementById('solution');
-	  arr.sort((x, y) => (x - y));
-	  while (li.firstChild) li.removeChild(li.firstChild);
-	  arr.map(c => prettytile(c, document)).forEach(el => li.appendChild(el));
-	  while (display.firstChild) display.removeChild(display.firstChild);
-	  document.getElementById('solvestatus').textContent = 'Working...';
-	  setTimeout(() => showsolve(arr), 100);
+	let arr = tocards(document.getElementById('hand').value),
+	    li = document.querySelector('#tosolve'),
+	    display = document.getElementById('solution');
+	arr.sort((x, y) => (x - y));
+	while (li.firstChild) li.removeChild(li.firstChild);
+	arr.map(c => prettytile(c, document)).forEach(el => li.appendChild(el));
+	while (display.firstChild) display.removeChild(display.firstChild);
+	document.getElementById('solvestatus').textContent = 'Working...';
+	workersolve(arr);
       }
 
       function solve_complete(tiles, start_time, soln) {

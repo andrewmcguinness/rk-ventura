@@ -453,14 +453,14 @@ function solveN(working, cursor, pool, state) {
 	      let attempt = solveN([], 0, pool2, state);
 	      if (attempt) {
 		working.push(next);
-		attempt.push(working);
+		attempt.unshift(working);
 		return attempt;
 	      }
 	    }
 	    
 	  let working2 = working.slice(0);
 	  working2.push(next);
-	  let attempt = solveN(working2, cursor, pool2, state);
+	  let attempt = solveN(working2, (isjoker(next))?cursor:i, pool2, state);
 	    if (attempt) {
 		return attempt;
 	    }

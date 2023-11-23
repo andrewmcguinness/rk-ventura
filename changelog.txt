@@ -11,3 +11,8 @@ $ python3 -m http:server 9000
 
 still working
 
+started the cursor from the last non-joker added -- still works
+about 8X faster on the 40-tile test case
+
+Still opportunities with jokers (if two JS, will try one then the other!!)
+
