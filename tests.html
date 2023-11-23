@@ -1,0 +1,92 @@
+<html>
+  <head>
+    <title>Rummi tests</title>
+    <style type='text/css'>
+      span.tilecolour-R { background: red; color: white }
+      span.tilecolour-T { background: lightblue; color: black }
+      span.tilecolour-Y { background: lightyellow; color: black }
+      span.tilecolour-B { background: black; color: white }
+      #solution li { margin-bottom: 1ex; }
+      li > span { margin-left: 1ex; padding: 4px }
+      li > span.joker { font-weight: bold }
+    </style>
+    <script src='./rummi.js'></script>
+    <script>
+      function clear() {
+	  for (let l of ['errors', 'output']) {
+	      const e = document.getElementById(l);
+	      while (e.firstChild) e.removeChild(e.firstChild);
+	  }
+      }
+      function err(x) {
+	  const li = document.createElement('li');
+	  li.textContent = x;
+	  document.getElementById('errors').appendChild(li);
+      }
+      function out(x) {
+	  const li = document.createElement('li');
+	  li.textContent = x;
+	  document.getElementById('output').appendChild(li);
+      }
+      function go() {
+	  const selected = document.getElementById('onetest').value;
+	  if (selected) return runonetest(selected);
+	  const results = runtests();
+	  console.log(results);
+	  for (let e of results.failed) err(e);
+	  for (let o of results.all) out(o);
+      }
+      function itemof(arr) {
+	  const li = document.createElement('li');
+	  prettymeld(arr).map(c => prettytile(c, document)).forEach(el => li.appendChild(el));
+	  return li;
+      }
+      function dosolve() {
+	  let arr = tocards(document.getElementById('hand').value),
+	      li = document.querySelector('#tosolve ul li');
+	  arr.sort((x, y) => (x - y));
+	  while (li.firstChild) li.removeChild(li.firstChild);
+	  arr.map(c => prettytile(c, document)).forEach(el => li.appendChild(el));
+	  setTimeout(() => showsolve(arr), 250);
+      }
+
+      function showsolve(tiles) {
+	  let display = document.getElementById('solution'),
+	      starttm = new Date().getTime(),
+	      soln = solve(tiles),
+	      millis = new Date().getTime() - starttm;
+	  console.log(soln);
+	  while (display.firstChild) display.removeChild(display.firstChild);
+	  if (soln.solution) {
+	      for (let meld of soln.solution) {
+		  const li = itemof(meld);
+		  display.appendChild(li);
+	      }
+	  }
+	  document.getElementById('solvestatus').textContent =
+	      'Considered ' + soln.count + ' nodes in ' + millis + 'ms - ' +
+	      (soln.solution?'Solved':'Not Solved');
+      }
+	  
+    </script>
+  </head>
+  <body>
+    <div>
+      <p>Colours: R T Y B</p>
+      <p>Ranks: 1 - 13</p>
+      <p>Jokers: JS JD JM JC</p>
+      <p>Example hand: R2 R3 R4 R5 JS B2 Y2 R8 T9 T10 JD</p>
+    </div>
+    <input id='hand' width='80'></input>
+    <button onclick='dosolve()'>Solve</button>
+    <div id='tosolve'><ul><li></li></ul></div>
+    <p id='solvestatus'></p>
+    <ul id='solution'></ul>
+    <hr/>
+    <input id='onetest'></input> <button onclick='go()'>test</button>
+    <ol id='errors'></ol>
+    <ol id='output'></ol>
+  </body>
+</html>
+
+  
